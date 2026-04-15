@@ -15,9 +15,11 @@ bg = pygame.transform.scale(bg, (WIDTH, HEIGHT))
 
 hat_icon = pygame.image.load("hat.png")
 color_icon = pygame.image.load("color.png")
+pet_icon = pygame.image.load("pets.png")
 
 hat_icon = pygame.transform.scale(hat_icon, (50, 50))
 color_icon = pygame.transform.scale(color_icon, (50, 50))
+pet_icon = pygame.transform.scale(pet_icon, (50, 50))
 
 hat_imgs = [
     None,
@@ -26,6 +28,12 @@ hat_imgs = [
     pygame.transform.scale(pygame.image.load("party_hat.png"), (65, 55)),
     pygame.transform.scale(pygame.image.load("crown.png"), (80, 60)),
     pygame.transform.scale(pygame.image.load("duck.png"), (40, 40)),
+]
+
+pet_imgs = [
+    None,
+    pygame.transform.smoothscale(pygame.image.load("capy.png"), (110, 85)),
+    pygame.transform.smoothscale(pygame.image.load("dino.png"), (110, 85)),
 ]
 
 BASE_COLORS = [
@@ -41,6 +49,7 @@ GROUND_Y = 470
 player1 = {
     "x": 250, "y": GROUND_Y,
     "color": 0, "hat": 0,
+    "pet": 0,
     "category": None,
     "shade": 1.0,
     "panel_x": 120,
@@ -52,6 +61,7 @@ player1 = {
 player2 = {
     "x": 750, "y": GROUND_Y,
     "color": 1, "hat": 0,
+    "pet": 0,
     "category": None,
     "shade": 1.0,
     "panel_x": 880,
@@ -87,11 +97,13 @@ class ImageButton:
 p1_buttons = {
     "color": ImageButton(color_icon, 50, 200),
     "hat": ImageButton(hat_icon, 50, 270),
+    "pet": ImageButton(pet_icon, 50, 340),
 }
 
 p2_buttons = {
     "color": ImageButton(color_icon, 900, 200),
     "hat": ImageButton(hat_icon, 900, 270),
+    "pet": ImageButton(pet_icon, 900, 340),
 }
 
 def apply_shade(color, shade):
@@ -185,6 +197,18 @@ def draw_options(player, side, mouse):
 
             options.append(("hat", j, rect))
 
+    elif player["category"] == "pet":
+
+        for i in range(len(pet_imgs)):
+            rect = pygame.Rect(base_x, 340 + i*60, 50, 50)
+            pygame.draw.rect(screen, (60,60,90), rect, border_radius=8)
+
+            if pet_imgs[i]:
+                screen.blit(pygame.transform.scale(pet_imgs[i], (35,30)),
+                            (rect.x+7, rect.y+10))
+
+            options.append(("pet", i, rect))
+
     return options
 
 def draw_player(p, t):
@@ -230,11 +254,29 @@ def draw_player(p, t):
     hat = hat_imgs[p["hat"]]
     if hat:
         offset_y = -40
-
         if p["hat"] == 4:
             offset_y = -28
-
         screen.blit(hat, hat.get_rect(center=(x, head_y + offset_y)))
+
+    if p["pet"] != 0:
+        pet = pet_imgs[p["pet"]]
+
+        # size ni pets
+        pet = pygame.transform.smoothscale(pet, (230, 170))
+
+        offset_x = 110
+        pet_x = x - offset_x if x > WIDTH // 2 else x + offset_x
+
+        bounce = math.sin(t * 3) * 3
+
+        vertical_offset = 188  # baba - increase; taas - decrease
+
+        ground_y = base_y + 120
+
+        pet_rect = pet.get_rect()
+        pet_y = ground_y - pet_rect.height + vertical_offset + bounce
+
+        screen.blit(pet, pet.get_rect(midbottom=(pet_x, pet_y)))
 
 def draw_name_ui(p, rect, save_rect):
     pygame.draw.rect(screen, (30,120,255), rect, border_radius=8)
