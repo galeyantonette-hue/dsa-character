@@ -13,28 +13,8 @@ pygame.key.start_text_input()
 bg = pygame.image.load("background.jpg")
 bg = pygame.transform.scale(bg, (WIDTH, HEIGHT))
 
-hat_icon = pygame.image.load("hat.png")
 color_icon = pygame.image.load("color.png")
-pet_icon = pygame.image.load("pets.png")
-
-hat_icon = pygame.transform.scale(hat_icon, (50, 50))
 color_icon = pygame.transform.scale(color_icon, (50, 50))
-pet_icon = pygame.transform.scale(pet_icon, (50, 50))
-
-hat_imgs = [
-    None,
-    pygame.transform.scale(pygame.image.load("hat1.png"), (80, 60)),
-    pygame.transform.scale(pygame.image.load("piratehat.png"), (130, 100)),
-    pygame.transform.scale(pygame.image.load("party_hat.png"), (65, 55)),
-    pygame.transform.scale(pygame.image.load("crown.png"), (80, 60)),
-    pygame.transform.scale(pygame.image.load("duck.png"), (40, 40)),
-]
-
-pet_imgs = [
-    None,
-    pygame.transform.smoothscale(pygame.image.load("capy.png"), (110, 85)),
-    pygame.transform.smoothscale(pygame.image.load("dino.png"), (110, 85)),
-]
 
 BASE_COLORS = [
     (255,0,0),(0,255,0),(0,0,255),(255,255,0),
@@ -48,11 +28,10 @@ GROUND_Y = 470
 
 player1 = {
     "x": 250, "y": GROUND_Y,
-    "color": 0, "hat": 0,
-    "pet": 0,
+    "color": 0,
     "category": None,
     "shade": 1.0,
-    "panel_x": 120,
+    "panel_x": -200,
     "name": "",
     "active": False,
     "saved_flash": 0
@@ -60,11 +39,10 @@ player1 = {
 
 player2 = {
     "x": 750, "y": GROUND_Y,
-    "color": 1, "hat": 0,
-    "pet": 0,
+    "color": 1,
     "category": None,
     "shade": 1.0,
-    "panel_x": 880,
+    "panel_x": WIDTH + 200,
     "name": "",
     "active": False,
     "saved_flash": 0
@@ -96,14 +74,10 @@ class ImageButton:
 
 p1_buttons = {
     "color": ImageButton(color_icon, 50, 200),
-    "hat": ImageButton(hat_icon, 50, 270),
-    "pet": ImageButton(pet_icon, 50, 340),
 }
 
 p2_buttons = {
     "color": ImageButton(color_icon, 900, 200),
-    "hat": ImageButton(hat_icon, 900, 270),
-    "pet": ImageButton(pet_icon, 900, 340),
 }
 
 def apply_shade(color, shade):
@@ -111,16 +85,13 @@ def apply_shade(color, shade):
 
 def draw_gradient(bar, base_color):
     width = int(bar.width)
-
     if width <= 0:
         return
 
     for i in range(width):
         shade = i / width
         col = apply_shade(base_color, shade)
-        pygame.draw.line(
-            screen,
-            col,
+        pygame.draw.line(screen, col,
             (bar.x + i, bar.y),
             (bar.x + i, bar.y + bar.height)
         )
@@ -128,28 +99,41 @@ def draw_gradient(bar, base_color):
 def draw_options(player, side, mouse):
     options = []
 
-    if not player["category"]:
-        return options
-
-    target_x = 120 if side == "left" else 780
-    player["panel_x"] += (target_x - player["panel_x"]) * 0.2
-    base_x = int(player["panel_x"])
-
     cols, size, spacing = 4, 22, 10
     rows = (len(BASE_COLORS) + cols - 1) // cols
-
     panel_w = cols*(size+spacing)+15
-    panel = pygame.Rect(base_x-15, 320, panel_w, 200)
+
+    padding = 15
+
+    panel_y = 270
+
+    if side == "left":
+        target_x = player["x"] - panel_w - 40
+        hidden_x = -panel_w - 50
+    else:
+        target_x = player["x"] + 40
+        hidden_x = WIDTH + 50
+
+    if player["category"]:
+        player["panel_x"] += (target_x - player["panel_x"]) * 0.2
+    else:
+        player["panel_x"] += (hidden_x - player["panel_x"]) * 0.2
+
+    base_x = int(player["panel_x"])
+
+    if abs(player["panel_x"] - hidden_x) < 1:
+        return options
+
+    panel = pygame.Rect(base_x, panel_y, panel_w, 200)
     pygame.draw.rect(screen, (40,40,70), panel, border_radius=15)
 
     if player["category"] == "color":
-
         for i, c in enumerate(BASE_COLORS):
             r, c2 = divmod(i, cols)
 
             rect = pygame.Rect(
-                base_x + c2*(size+spacing),
-                340 + r*(size+spacing),
+                base_x + padding + c2*(size+spacing),
+                panel_y + padding + r*(size+spacing),
                 size, size
             )
 
@@ -160,14 +144,18 @@ def draw_options(player, side, mouse):
 
             options.append(("color", i, rect))
 
-        slider_y = 340 + rows*(size+spacing) + 10
-        bar = pygame.Rect(base_x, slider_y, panel_w-20, 10)
+        slider_y = panel_y + padding + rows*(size+spacing) + 10
+
+        bar = pygame.Rect(
+            base_x + padding,
+            slider_y,
+            panel_w - padding*2,
+            10
+        )
 
         draw_gradient(bar, BASE_COLORS[player["color"]])
 
-        shade = player["shade"]
-        shade = max(0.0, min(1.0, float(shade)))
-
+        shade = max(0.0, min(1.0, float(player["shade"])))
         width = max(1, int(bar.width))
         knob_x = bar.x + int(shade * width)
 
@@ -175,108 +163,26 @@ def draw_options(player, side, mouse):
 
         options.append(("shade", bar, bar))
 
-    elif player["category"] == "hat":
-
-        for i in range(min(3, len(hat_imgs))):
-            rect = pygame.Rect(base_x, 340 + i*60, 50, 50)
-            pygame.draw.rect(screen, (60,60,90), rect, border_radius=8)
-
-            if hat_imgs[i]:
-                screen.blit(pygame.transform.scale(hat_imgs[i], (35,30)),
-                            (rect.x+7, rect.y+10))
-
-            options.append(("hat", i, rect))
-
-        for j in range(3, len(hat_imgs)):
-            rect = pygame.Rect(base_x + 70, 340 + (j-3)*60, 50, 50)
-            pygame.draw.rect(screen, (60,60,90), rect, border_radius=8)
-
-            if hat_imgs[j]:
-                screen.blit(pygame.transform.scale(hat_imgs[j], (35,30)),
-                            (rect.x+7, rect.y+10))
-
-            options.append(("hat", j, rect))
-
-    elif player["category"] == "pet":
-
-        for i in range(len(pet_imgs)):
-            rect = pygame.Rect(base_x, 340 + i*60, 50, 50)
-            pygame.draw.rect(screen, (60,60,90), rect, border_radius=8)
-
-            if pet_imgs[i]:
-                screen.blit(pygame.transform.scale(pet_imgs[i], (35,30)),
-                            (rect.x+7, rect.y+10))
-
-            options.append(("pet", i, rect))
-
     return options
 
 def draw_player(p, t):
     x = p["x"]
     base_y = p["y"]
 
-    sway = math.sin(t*2) * 8
-    leg_sway = math.sin(t*2 + 1) * 6
     bob = math.sin(t*2) * 4
 
     col = apply_shade(BASE_COLORS[p["color"]], p["shade"])
 
-    foot_y = base_y + 120
-    head_y = foot_y - 240 + bob
-    head_r = 32
+    size = 170
+    y = base_y - size + bob
 
-    body_top = head_y + head_r
-    body_bottom = foot_y - 60
+    pygame.draw.rect(screen, (0,0,0),
+                     (x - size//2 - 4, y - 4, size + 8, size + 8),
+                     border_radius=8)
 
-    pygame.draw.circle(screen, (0,0,0), (x, int(head_y)), head_r + 4)
-    pygame.draw.circle(screen, col, (x, int(head_y)), head_r)
-
-    pygame.draw.line(screen, (0,0,0),(x, body_top),(x, body_bottom),16)
-    pygame.draw.line(screen, col,(x, body_top),(x, body_bottom),12)
-
-    arm_y = body_top + 40
-
-    pygame.draw.line(screen, (0,0,0),(x, arm_y),(x-75+sway, arm_y+30),16)
-    pygame.draw.line(screen, col,(x, arm_y),(x-75+sway, arm_y+30),12)
-
-    pygame.draw.line(screen, (0,0,0),(x, arm_y),(x+75+sway, arm_y+30),16)
-    pygame.draw.line(screen, col,(x, arm_y),(x+75+sway, arm_y+30),12)
-
-    left_foot = (x - 40 + leg_sway, foot_y)
-    right_foot = (x + 40 - leg_sway, foot_y)
-
-    pygame.draw.line(screen, (0,0,0),(x, body_bottom),left_foot,16)
-    pygame.draw.line(screen, col,(x, body_bottom),left_foot,12)
-
-    pygame.draw.line(screen, (0,0,0),(x, body_bottom),right_foot,16)
-    pygame.draw.line(screen, col,(x, body_bottom),right_foot,12)
-
-    hat = hat_imgs[p["hat"]]
-    if hat:
-        offset_y = -40
-        if p["hat"] == 4:
-            offset_y = -28
-        screen.blit(hat, hat.get_rect(center=(x, head_y + offset_y)))
-
-    if p["pet"] != 0:
-        pet = pet_imgs[p["pet"]]
-
-        # size ni pets
-        pet = pygame.transform.smoothscale(pet, (230, 170))
-
-        offset_x = 110
-        pet_x = x - offset_x if x > WIDTH // 2 else x + offset_x
-
-        bounce = math.sin(t * 3) * 3
-
-        vertical_offset = 188  # baba - increase; taas - decrease
-
-        ground_y = base_y + 120
-
-        pet_rect = pet.get_rect()
-        pet_y = ground_y - pet_rect.height + vertical_offset + bounce
-
-        screen.blit(pet, pet.get_rect(midbottom=(pet_x, pet_y)))
+    pygame.draw.rect(screen, col,
+                     (x - size//2, y, size, size),
+                     border_radius=8)
 
 def draw_name_ui(p, rect, save_rect):
     pygame.draw.rect(screen, (30,120,255), rect, border_radius=8)
